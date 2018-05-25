@@ -1,4 +1,6 @@
+autologging
 falcon
+falcon_cors
 geoalchemy2
 gunicorn
 marshmallow
@@ -7,4 +9,4 @@ pytest
 pytest-cov
 shapely
 SQLAlchemy
-
+webargs
