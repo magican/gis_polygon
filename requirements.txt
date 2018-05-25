@@ -1,0 +1,10 @@
+falcon
+geoalchemy2
+gunicorn
+marshmallow
+pyproj
+pytest
+pytest-cov
+shapely
+SQLAlchemy
+
