@@ -16,7 +16,12 @@ class GeometrySerializationField(fields.Field):
     Custom SQLAlchemy Geometry serializer/deserializer
     """
 
-    # TODO: Maybe use WKBElement serialization/deserialization
+    # TODO: Change error message if geometry is incorrect
+    default_error_messages = {
+        'invalid': 'Not a valid geometry.',
+    }
+
+    # TODO: use WKBElement serialization/deserialization
     def _serialize(self, value, attr, obj):
         if value is None:
             return value
@@ -48,7 +53,6 @@ class GISPolygonSerializer(Schema):
     name = fields.String(required=True)
     props = fields.String(required=False)
     geom = GeometrySerializationField(required=True)
-    # geom = fields.Field()
     class_id = fields.Integer()
     _created = fields.DateTime(format='%Y-%m-%dT%H:%M:%S')
     _updated = fields.DateTime(format='%Y-%m-%dT%H:%M:%S')

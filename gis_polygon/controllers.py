@@ -27,16 +27,22 @@ from .db_session import DBSession
 from .models import GISPolygon
 from .serializers import GISPolygonSerializer
 
+from geoalchemy2.shape import to_shape
 
-def datetime_handler(x):
+from geoalchemy2.elements import WKBElement
+
+
+def datetime_wkb_handler(x):
     """
-    Handles json dumps of datetime objects in iso format.
+    Handles json dumps of datetime/WKBElement objects in str format.
     :param x:
     :return:
     """
     # TODO: One could try using isoformat in Models or write a decorator
     if isinstance(x, datetime):
         return x.isoformat()
+    if isinstance(x, WKBElement):
+        return to_shape(x).to_wkt()
     return x
 
 
@@ -85,11 +91,11 @@ class GISPolygonCRUD(BaseGISPolygonController):
         gis_polygon = self.get_gis_polygon(session, gis_polygon_id)
 
         if gis_polygon:
-            gis_polygon = gis_polygon.as_dict()
+            gis_polygon = gis_polygon.as_json_dict()
         else:
             return self.response_404(resp)
 
-        resp.body = json.dumps(gis_polygon, ensure_ascii=False, default=datetime_handler)
+        resp.body = json.dumps(gis_polygon, ensure_ascii=False, default=datetime_wkb_handler)
         resp.status = falcon.HTTP_200
 
     def on_post(self, req, resp):
@@ -116,7 +122,7 @@ class GISPolygonCRUD(BaseGISPolygonController):
         session.commit()
 
         # resp.body = json.dumps(gis_polygon.as_dict(), default=datetime_handler)
-        resp.body = json.dumps(self.serializer.dump(gis_polygon).data, default=datetime_handler)
+        resp.body = json.dumps(self.serializer.dump(gis_polygon).data, default=datetime_wkb_handler)
         resp.status = falcon.HTTP_201
 
     def on_put(self, req, resp, gis_polygon_id=None):
@@ -186,6 +192,6 @@ class GISPolygonList(BaseGISPolygonController):
         if not gis_polygons:
             resp.body = json.dumps({"status": "The DB is empty, please fill."})
         else:
-            resp.body = json.dumps(gis_polygons, ensure_ascii=False, default=datetime_handler)
+            resp.body = json.dumps(gis_polygons, ensure_ascii=False, default=datetime_wkb_handler)
 
         resp.status = falcon.HTTP_200

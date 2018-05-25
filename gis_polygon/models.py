@@ -7,6 +7,8 @@ GISPolygon Data Model for the CRUD API.
 
 from datetime import datetime
 
+from geoalchemy2.elements import WKBElement
+from geoalchemy2.shape import to_shape
 from geoalchemy2.types import Geometry
 from sqlalchemy import create_engine, Column, String, TIMESTAMP, JSON, INTEGER
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,6 +16,20 @@ from sqlalchemy.ext.declarative import declarative_base
 import settings
 
 Base = declarative_base()
+
+
+def serialize(x):
+    """
+    Handles json dumps of datetime/WKBElement objects in str format.
+    :param x:
+    :return:
+    """
+    # TODO: One could try using isoformat in Models or write a decorator
+    if isinstance(x, datetime):
+        return x.isoformat()
+    if isinstance(x, WKBElement):
+        return to_shape(x).to_wkt()
+    return x
 
 
 class GISPolygon(Base):
@@ -41,8 +57,12 @@ class GISPolygon(Base):
 
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
-        # def as_json_dict(self):
-        #     return {c.name: serialize(getattr(self, c.name)) for c in self.__table__.columns}
+    def as_json_dict(self):
+        """
+        Represent data model as serialized Dict for json dumps.
+        :return:
+        """
+        return {c.name: serialize(getattr(self, c.name)) for c in self.__table__.columns}
 
 
 if __name__ == "__main__":
