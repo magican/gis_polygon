@@ -95,7 +95,7 @@ def gis_polygon_instance(gis_polygon_data, session, request):
     session.add(gis_polygon_data_serialized)
     session.commit()
 
-    request.addfinalizer(finalizer)
+    # request.addfinalizer(finalizer)
 
     return gis_polygon_data_serialized
 
@@ -158,7 +158,7 @@ def test_create_gis_polygon(client, session):
     # result.pop('id')
     assert result == doc
 
-    _cleanup_gis_polygon(session)
+    # _cleanup_gis_polygon(session)
 
 
 def test_get_gis_polygon(client, session, gis_polygon_instance):
@@ -172,8 +172,6 @@ def test_get_gis_polygon(client, session, gis_polygon_instance):
     result = client.simulate_get('/gis_polygon/%s' % gis_polygon_instance.id).json
 
     assert result == doc, 'No GIS Polygons data was found'
-
-    _cleanup_gis_polygon(session)
 
 
 def test_update_gis_polygon(client, gis_polygon_instance):
@@ -266,3 +264,22 @@ def test_content_type(client, gis_polygon_data):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     result = client.simulate_post('/gis_polygon/', body=body, headers=headers)
     assert result.json == doc, 'Passed wrong content-type'
+
+
+def test_get_gis_polygon_transformed(client, gis_polygon_instance):
+    """
+    Testing Reading, simulating GET request.
+    :param client:
+    :param session:
+    :return:
+    """
+    doc = Polygon([[-1433556.4349097274243832, 14371297.8913895916193724],
+                   [-1449685.0958937092218548, 14413734.0947724953293800],
+                   [-1449348.5935858904849738, 14415157.0348221659660339],
+                   [-1449292.4849653979763389, 14415159.7974598743021488],
+                   [-1449265.8023261826019734, 14415153.2734880037605762],
+                   [-1433556.4349097274243832, 14371297.8913895916193724]]).to_wkt()
+    result = client.simulate_get(path='/gis_polygon/transform',
+                                 query_string='id=%s&out_proj=' % gis_polygon_instance.id).json
+
+    assert result['geom'] == doc, 'No GIS Polygons data was found'

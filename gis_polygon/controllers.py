@@ -9,8 +9,6 @@ GISPolygon CRUD Controller allowing:
     - Delete on DELETE
 """
 
-# TODO: ADD Logger
-
 from datetime import datetime
 
 try:
@@ -21,15 +19,18 @@ finally:
     import json
 
 import falcon
-from marshmallow import ValidationError
+from marshmallow import Schema, fields, ValidationError
+
+from geoalchemy2.shape import to_shape
+from geoalchemy2.elements import WKBElement
+
+from autologging import logged
+import logging
 
 from .db_session import DBSession
 from .models import GISPolygon
 from .serializers import GISPolygonSerializer
-
-from geoalchemy2.shape import to_shape
-
-from geoalchemy2.elements import WKBElement
+from .middleware import cs_transform
 
 
 def datetime_wkb_handler(x):
@@ -45,6 +46,20 @@ def datetime_wkb_handler(x):
         return to_shape(x).to_wkt()
     return x
 
+
+class UserSchema(Schema):
+    outProj = fields.Str(missing='32644')
+    id = fields.Integer(missing=None)
+
+
+# TODO: ADD Logger
+logging.basicConfig(level=logging.INFO, filename="/tmp/gis_polygon.log",
+                    format="%(levelname)s:%(name)s:%(funcName)s: %(message)s")
+
+logger = logging.getLogger('gis_polygon')
+
+
+# TODO: Optimize for speed
 
 class BaseGISPolygonController(object):
     """
@@ -194,4 +209,46 @@ class GISPolygonList(BaseGISPolygonController):
         else:
             resp.body = json.dumps(gis_polygons, ensure_ascii=False, default=datetime_wkb_handler)
 
+        resp.status = falcon.HTTP_200
+
+
+@logged(logger)
+class GISPolygonTransform(BaseGISPolygonController):
+    """
+    Controller to display the list of all gis_polygons upon GET request.
+    """
+
+    from webargs.falconparser import use_args
+
+    @use_args(UserSchema(strict=True))
+    def on_get(self, req, resp, args):
+        """
+        Retrieve detailed info abP gis_polygon projected between coordinate systems.
+        :param req:
+        :param resp:
+        :param gis_polygon_id:
+        :return:
+        """
+
+        self.__log.info('{0} {1} {2} {3}'.format(req.method, req.relative_uri, resp.status[:3], args))
+
+        session = DBSession()
+        gis_polygon = self.get_gis_polygon(session, args['id'])
+
+        if gis_polygon:
+            gis_polygon = gis_polygon.as_json_dict()
+        else:
+            return self.response_404(resp)
+
+        if args['outProj']:
+            gis_polygon['geom'] = cs_transform(gis_polygon['geom'], in_proj='epsg:4326',
+                                               out_proj=''.join(['epsg:', args['outProj']]))
+        elif args['outProj'] is None:
+            resp.status = falcon.HTTP_400
+            resp.body = 'No output projection s specified'
+        else:
+            resp.status = falcon.HTTP_200
+            resp.body = 'NOT Hoorrayy!!!!'
+
+        resp.body = json.dumps(gis_polygon, ensure_ascii=False, default=datetime_wkb_handler)
         resp.status = falcon.HTTP_200

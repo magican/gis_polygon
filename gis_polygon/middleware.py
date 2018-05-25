@@ -2,40 +2,46 @@
 # coding: utf-8
 
 """
-
+Middlware to allow on the fly conversion between two coordinate systems (CSs).
 """
 
 from functools import partial
 
 import pyproj
-from shapely.geometry import Polygon
+from shapely import wkt
 from shapely.ops import transform
+
 
 # TODO: Grab in/out Proj from DB or request
 # pyproj.Proj(init='epsg:' + str(srid))
 # pyproj.Proj(init='epsg:' + str(req_srid)))
-#  Transform between two coordinate systems defined by the Proj instances
-inProj = pyproj.Proj(init='epsg:4326')
-outProj = pyproj.Proj(init='epsg:32644')
-project_db_to_req = partial(pyproj.transform, inProj, outProj)
 
-# Polygon outline
-pol = Polygon(
-    [[-73.08373, 47.76313],
-     [-73.07296, 47.37293],
-     [-73.08303, 47.36239],
-     [-73.08371, 47.36253],
-     [-73.0840, 47.36266],
-     [-73.08373, 47.76313]])
+def cs_transform(polygon_wkt, in_proj=None, out_proj=None):
+    """
+    Transform between two coordinate systems defined by the Proj instances.
+    :param in_proj:
+    :param out_proj:
+    :param polygon:
+    :return:
+    """
+    in_proj = 'epsg:4326' if in_proj is None else in_proj
+    out_proj = 'epsg:32644' if out_proj is None else out_proj
 
-# Apply projection transform to Polygon 'pol'
-pol2 = transform(project_db_to_req, pol)
+    polygon = wkt.loads(polygon_wkt)
 
-# print(pol.area)  # Area in square meters
-# print(pol2.area)
+    in_proj = pyproj.Proj(init=in_proj)
+    out_proj = pyproj.Proj(init=out_proj)
+    # TODO: Check if polygon is correctly specified
+    project_db_to_req = partial(pyproj.transform, in_proj, out_proj)
+
+    # Apply projection transform to Polygon 'pol' and convert to wkt
+    return transform(project_db_to_req, polygon).to_wkt()
+
+    # print(pol.area)  # Area in square meters
+    # print(pol2.area)
 
 
-# from geoalchemy2.shape import to_shape, from_shape
-# wkb_element = from_shape(pol, srid=4326)
-#
-# to_shape(wkb_element)
+    # from geoalchemy2.shape import to_shape, from_shape
+    # wkb_element = from_shape(pol, srid=4326)
+    #
+    # to_shape(wkb_element)
